@@ -1,0 +1,23 @@
+name: comet
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.8
+  - pytorch
+  - IPython
+  - ftfy
+  - numpy
+  - scipy
+  - tqdm
+  - tensorboardX
+  - spacy
+  - docopt
+  - pandas
+  - nltk
+  - torchvision
+  - pip
+  - pip:
+    - sentencepiece
+    - sacrebleu
+    - tensorboard
