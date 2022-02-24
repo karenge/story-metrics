@@ -27,6 +27,7 @@ We need Tensorflow 2.0 and TensorHub 0.7 for this Colab
 import tensorflow as tf
 import tensorflow_hub as hub
 import tensorflow_text
+import pandas as pd
 print("TF version: ", tf.__version__)
 print("Hub version: ", hub.__version__)
 
@@ -61,7 +62,7 @@ Outputs:
  - sequence_output of shape `[batch_size, max_seq_length, 768]` with representations for each input token (in context)
 """
 
-max_seq_length = 128  # Your choice here.
+max_seq_length = 50  # Your choice here.
 input_word_ids = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
                                        name="input_word_ids")
 input_mask = tf.keras.layers.Input(shape=(max_seq_length,), dtype=tf.int32,
@@ -128,6 +129,7 @@ tokenizer = FullTokenizer(vocab_file, do_lower_case)
 
 """## Test BERT embedding generator model"""
 
+df = pd.read_csv('sample.csv', index_col=0)
 s = "This is a nice sentence."
 
 """Tokenizing the sentence"""
@@ -157,6 +159,7 @@ sentence = "This is a nice sentence."
 encoder_inputs = preprocessor([sentence])
 
 outputs = encoder(encoder_inputs)
+print(outputs)
 pooled_output = outputs["pooled_output"]
 sequence_output = outputs["sequence_output"]
 print(pooled_output.shape, sequence_output.shape)
