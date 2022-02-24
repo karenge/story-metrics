@@ -1,5 +1,5 @@
 {
-    "gpu_mode": "F",
+    "gpu_mode": "T",
     "gpu_index": 0,
     "gpu_indices": [0, 1],
     "multigpu": "F",

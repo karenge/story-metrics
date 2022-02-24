@@ -1,6 +1,6 @@
 {
-    "gpu_mode": "T",
-    "gpu_index": 0,
+    "gpu_mode": "F",
+    "gpu_index": 1,
     "gpu_indices": [
         0,
         1
