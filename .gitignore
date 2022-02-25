@@ -33,6 +33,11 @@ MANIFEST
 *.manifest
 *.spec
 
+# Comet Pretrained Models
+atomic_pretrained_model.pickle
+conceptnet_pretrained_model.pickle
+
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
