@@ -9,12 +9,6 @@ nlp = spacy.load('en_core_web_sm')
 from spacy.matcher import Matcher 
 from spacy.tokens import Span 
 
-import networkx as nx
-
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-
-
 #sentences = pd.read_csv("cloze_test_test__winter2018-cloze_test_ALL_test - 1.csv", index_col=0)
 
 #this function is from https://www.kaggle.com/pavansanagapati/knowledge-graph-nlp-tutorial-bert-spacy-nltk
@@ -89,3 +83,8 @@ def get_relation(sent):
     span = doc[matches[k][1]:matches[k][2]] 
 
     return(span.text)
+
+def get_kg(sent):
+    entities = get_entities(sent)
+    relation = get_relation(sent)
+    return [entities[0], relation, entities[1]]
