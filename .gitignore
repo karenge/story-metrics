@@ -128,5 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-#UNION
-*model.ckpt.*
+#icloud
+*.icloud
