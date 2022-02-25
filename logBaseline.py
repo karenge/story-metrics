@@ -5,9 +5,10 @@ import pandas as pd
 import torch
 from sklearn.model_selection import train_test_split
 from graphs import get_kg
-from gensim.models import KeyedVectors
+from gensim import models
 
-model = KeyedVectors.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=True)
+model = models.KeyedVectors.load_word2vec_format("GoogleNews-vectors-negative300.bin.gz", binary=True)
+#model = word2vec.Word2Vec.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=False)
 
 def get_train_test(csv):
     df = pd.read_csv(csv)
@@ -38,9 +39,9 @@ def get_train_test(csv):
     return train, test
 
 def get_embedding(word):
-    if word in model.vocab:
+    try:
         return model[word]
-    else:
+    except:
         return np.zeros(300)
 
 def centroid(words):
