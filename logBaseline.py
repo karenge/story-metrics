@@ -7,8 +7,7 @@ from sklearn.model_selection import train_test_split
 from graphs import get_kg
 from gensim import models
 
-model = models.KeyedVectors.load_word2vec_format("GoogleNews-vectors-negative300.bin.gz", binary=True)
-#model = word2vec.Word2Vec.load_word2vec_format('GoogleNews-vectors-negative300.bin', binary=False)
+#model = models.KeyedVectors.load_word2vec_format("GoogleNews-vectors-negative300.bin.gz", binary=True)
 
 def get_train_test(csv):
     df = pd.read_csv(csv)
@@ -22,7 +21,6 @@ def get_train_test(csv):
     secondEndings.rename(columns=lambda x: x.replace('RandomFifthSentenceQuiz2', 'Ending'), inplace=True)
     correct = pd.concat([firstEndings, secondEndings])
     correct['Label'] = 1
-    del correct['AnswerRightEnding']
 
     filter_ = df2['AnswerRightEnding'] >= 2
     #all the incorrect story endings
@@ -32,11 +30,13 @@ def get_train_test(csv):
     secondEndings2.rename(columns=lambda x: x.replace('RandomFifthSentenceQuiz1', 'Ending'), inplace=True)
     incorrect = pd.concat([firstEndings2, secondEndings2])
     incorrect['Label'] = 0
-    del incorrect['AnswerRightEnding']
 
     data = pd.concat([correct, incorrect])
-    train, test = train_test_split(data, test_size=0.15)
-    return train, test
+    x = data[['InputSentence1', 'InputSentence2', 'InputSentence3', 'InputSentence4']]
+    y = data['Label']
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.15)
+    return x_train, x_test, y_train, y_test
 
 def get_embedding(word):
     try:
@@ -47,12 +47,23 @@ def get_embedding(word):
 def centroid(words):
     return np.mean([get_embedding(word) for word in words], axis = 0)
 
+def centroid_feature(story, ending):
+    story_centroid = np.mean([centroid[sent] for sent in story], axis = 0)
+    ending_centroid = centroid(ending)
+    return np.concatenate([story_centroid, ending_centroid])
+
 def cosine_sim(a, b):
     return dot(a, b)/(norm(a)*norm(b))
 
+def se__similarity_feature(story, ending):
+    story_centroid = np.mean([centroid[sent] for sent in story], axis = 0)
+    ending_centroid = centroid(ending)
+    return cosine_sim(story_centroid, ending_centroid)
+
 def main():
-    train, test = get_train_test('clozeTest2018.csv')
-    print(get_embedding("dog"))
+    x_train, x_test, y_train, y_test = get_train_test('clozeTest2018.csv')
+    print(x_train.head())
+    print(y_train.head())
 
     
 if __name__ == "__main__":
