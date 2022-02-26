@@ -7,7 +7,15 @@ from sklearn.model_selection import train_test_split
 from graphs import get_kg
 from gensim import models
 
-model = models.KeyedVectors.load_word2vec_format("GoogleNews-vectors-negative300.bin.gz", binary=True)
+w2v_model = models.KeyedVectors.load_word2vec_format("GoogleNews-vectors-negative300.bin.gz", binary=True)
+
+class LogisticRegression(torch.nn.Module):
+     def __init__(self):
+        super(LogisticRegression, self).__init__()
+        self.linear = torch.nn.Linear(2, 1)
+     def forward(self, x):
+        y_pred = torch.sigmoid(self.linear(x))
+        return y_pred.squeeze(-1)
 
 def get_xy(csv):
     df = pd.read_csv(csv)
@@ -38,38 +46,76 @@ def get_xy(csv):
 
 def get_embedding(word):
     try:
-        return model[word]
+        return w2v_model[word]
     except:
         return np.zeros(300)
 
 def centroid(words):
-    return np.mean([get_embedding(word) for word in words], axis = 0)
+    return np.mean([get_embedding(word) for word in words.split()], axis = 0)
 
 def cosine_sim(a, b):
-    return dot(a, b)/(norm(a)*norm(b))
-
-def se__similarity_feature(story, ending):
-    story_centroid = np.mean([centroid(sent) for sent in story], axis = 0)
+    if np.sum(a**2)*np.sum(b**2) == 0:
+        return 0
+    else:
+        return np.sum(a*b)/np.sqrt(np.sum(a**2)*np.sum(b**2))
+        
+def story_ending_sim(story, ending):
     ending_centroid = centroid(ending)
+    story_centroid = np.mean([centroid(sent) for sent in story], axis = 0)
     return cosine_sim(story_centroid, ending_centroid)
 
-def concat_features(story, ending):
-    story_centroid = np.mean([centroid(sent) for sent in story], axis = 0)
+def max_sim(story, ending):
+    story_combined = []
+    for sent in story:
+        for word in sent.split():
+            story_combined.append(word)
     ending_centroid = centroid(ending)
-    return np.concatenate([se__similarity_feature(story, ending)])
+    word_sim = [cosine_sim(get_embedding(word), ending_centroid) for word in story_combined]
+    word_sim.sort(reverse=True)
+    return np.mean(word_sim[:4])
+
+def concat_features(story, ending):
+    ending_centroid = centroid(ending)
+    return np.array([story_ending_sim(story, ending_centroid), max_sim(story, ending_centroid)])
 
 def get_features(csv):
     x, y = get_xy(csv)
-    x_features = x.apply(lambda story: se__similarity_feature([story.InputSentence1, story.InputSentence2, story.InputSentence3, story.InputSentence4], story.Ending), axis=1)
+    x_features1 = x.apply(lambda story: story_ending_sim([story.InputSentence1, story.InputSentence2, story.InputSentence3, story.InputSentence4], story.Ending), axis=1)
+    x_features2 = x.apply(lambda story: max_sim([story.InputSentence1, story.InputSentence2, story.InputSentence3, story.InputSentence4], story.Ending), axis=1)
+    
+    x_features = pd.DataFrame()
+    x_features['se_sim'] = x_features1
+    x_features['max_sim'] = x_features2
+
     x_train, x_test, y_train, y_test = train_test_split(x_features, y, test_size=0.15)
-    return x_train, x_test, y_train, y_test
+    return x_train.to_numpy(), x_test.to_numpy(), y_train.to_numpy(), y_test.to_numpy()
 
 def main():
     x_train, x_test, y_train, y_test = get_features('clozeTest2018.csv')
-    print("x_train.shape ", x_train.shape)
-    print("y_train.shape ", y_train.shape)
-    print("x_test.shape ", x_test.shape)
-    print("y_test.shape ", y_test.shape)
+    print("x_train shape ", x_train.shape)
+    x_train=torch.from_numpy(x_train.astype(np.float32))
+    x_test=torch.from_numpy(x_test.astype(np.float32))
+    y_train=torch.from_numpy(y_train.astype(np.float32))
+    y_test=torch.from_numpy(y_test.astype(np.float32))
+
+    model = LogisticRegression()
+    criterion = torch.nn.BCELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+
+    for epoch in range(100):
+        y_pred = model(x_train)
+        loss=criterion(y_pred, y_train)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+        if (epoch+1)%10 == 0:
+            print('epoch:', epoch+1,',loss=',loss.item())
+
+    with torch.no_grad():
+        y_pred = model(x_test)
+        y_pred_class = y_pred.round()
+        accuracy = (y_pred_class.eq(y_test).sum()) / float(y_test.shape[0])
+        print("accuracy ", accuracy.item())
 
 
 if __name__ == "__main__":
