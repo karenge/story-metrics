@@ -13,12 +13,18 @@ def load_from_source(source):
 
 def clean(story):
     story = story.replace('<newline>', '')
-    story = story.strip('*')
+    story = story.replace('*', '')
+    story = story.replace('<', '')
+
+    return story
 
 total = []
 for s in sources:
     stories = load_from_source(s)
-    total.append(clean(t) for t in stories)
+    print(s, len(stories))
+    for t in stories:
+        total.append(clean(t))
 
 with open("writingPromptsClean.txt", "w") as output:
-    output.write(str(total))
+    for elt in total:
+        output.write(elt)
