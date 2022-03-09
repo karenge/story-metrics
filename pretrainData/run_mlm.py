@@ -135,7 +135,7 @@ class DataTrainingArguments:
         metadata={"help": "An optional input evaluation data file to evaluate the perplexity on (a text file)."},
     )
     overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
+        default=True, metadata={"help": "Overwrite the cached training and evaluation sets"}
     )
     validation_split_percentage: Optional[int] = field(
         default=5,
@@ -506,6 +506,7 @@ def main():
     )
 
     # Initialize our Trainer
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
     trainer = Trainer(
         model=model,
         args=training_args,
