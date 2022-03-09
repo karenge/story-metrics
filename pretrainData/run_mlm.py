@@ -21,6 +21,9 @@ https://huggingface.co/models?filter=fill-mask
 """
 # You can also adapt this script on your own masked language modeling task. Pointers for this are left as comments.
 
+import torch
+torch.cuda.empty_cache()
+
 import logging
 import math
 import os
