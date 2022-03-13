@@ -1,3 +1,4 @@
+text,emotionlist
 My math teacher was planning on giving an unannounced quiz one week.,"[u'anger', u'surprise', u'fear', u'anticipation', u'sadness']"
 "Of course I didn't know that, so when it happened I was very nervous!","[u'surprise', u'fear', u'anticipation', u'sadness']"
 I took my time on the quiz but it wasn't going that well for me.,"[u'anticipation', u'sadness', u'disgust', u'anger', u'surprise', u'fear']"
