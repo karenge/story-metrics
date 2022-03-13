@@ -36,6 +36,6 @@ for s in sources:
     for t in stories:
         total.append(clean(t))
 
-with open("writingPromptsPlotsClean.txt", "w") as output:
+with open("PromptsPlotsClean.txt", "w") as output:
     for elt in total:
         output.write(elt)

@@ -572,7 +572,8 @@ def main():
     else:
         trainer.create_model_card(**kwargs)
 
-
+    torch.cuda.empty_cache()
+    
 def _mp_fn(index):
     # For xla_spawn (TPUs)
     main()
