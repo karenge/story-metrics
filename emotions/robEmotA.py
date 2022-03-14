@@ -8,9 +8,9 @@ Original file is located at
 
 ## Emotion Classification using Fine-tuned BERT model
 
-In this tutorial, I will show to fine-tune a language model (LM) for emotion classification with code adapted from this [tutorial](https://zablo.net/blog/post/custom-classifier-on-bert-model-guide-polemo2-sentiment-analysis/) by MARCIN ZABŁOCKI. I adapted his tutorial and modified the code to suit the emotion classification task using a different BERT model. Please refer to his tutorial for more detailed explanations for each code block. I really liked his tutorial because of the attention to detail and the use of high-level libraries to take care of certain parts of the model such as training and finding a good learning rate. 
+In this tutorial, I will show to fine-tune a language model (LM) for emotion classification with code adapted from this [tutorial](https://zablo.net/blog/post/custom-classifier-on-bert-model-guide-polemo2-sentiment-analysis/) by MARCIN ZABŁOCKI. I adapted his tutorial and modified the code to suit the emotion classification task using a different BERT model. Please refer to his tutorial for more detailed explanations for each code block. I really liked his tutorial because of the attention to detail and the use of high-level libraries to take care of certain parts of the model such as training and finding a good learning rate.
 
-Before you get started, make sure to enable `GPU` in the runtime and be sure to 
+Before you get started, make sure to enable `GPU` in the runtime and be sure to
 restart the runtime in this environment after installing the `pytorch-lr-finder` library.
 
 This tutorial is in a rough draft so if you find any issues with this tutorial or have any further questions reach out to me via [Twitter](https://twitter.com/omarsar0).
@@ -45,7 +45,7 @@ torch.__version__
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 """## Load the Pretrained Language Model
-We are first going to look at pretrained language model provided by HuggingFace models. We will use a variant of BERT, called DistilRoBERTa base. The `base` model has less parameters than the `larger` model. 
+We are first going to look at pretrained language model provided by HuggingFace models. We will use a variant of BERT, called DistilRoBERTa base. The `base` model has less parameters than the `larger` model.
 
 [RoBERTa](https://arxiv.org/abs/1907.11692) is a variant of of BERT which "*modifies key hyperparameters, removing the next-sentence pretraining objective and training with much larger mini-batches and learning rates*".
 
@@ -81,7 +81,7 @@ Using DistilBertForSequenceClassification: https://huggingface.co/transformers/m
 out = base_model(torch.tensor(enc["input_ids"]).unsqueeze(0), torch.tensor(enc["attention_mask"]).unsqueeze(0))
 out[0].shape
 
-## size of representation of one of the tokens 
+## size of representation of one of the tokens
 out[0][:,0,:].shape
 
 """`torch.Size([1, 768])` represents batch_size, number of tokens in input text (lenght of tokenized text), model's output hidden size."""
@@ -103,7 +103,7 @@ Use Mish activiation function as in the one proposed in the original tutorial
 @torch.jit.script
 def mish(input):
     return input * torch.tanh(F.softplus(input))
-  
+
 class Mish(nn.Module):
     def forward(self, input):
         return mish(input)
@@ -114,7 +114,7 @@ class EmoModel(nn.Module):
     def __init__(self, base_model, n_classes, base_model_output_size=768, dropout=0.05):
         super().__init__()
         self.base_model = base_model
-        
+
         self.classifier = nn.Sequential(
             nn.Dropout(dropout),
             nn.Linear(base_model_output_size, base_model_output_size),
@@ -122,7 +122,7 @@ class EmoModel(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(base_model_output_size, n_classes)
         )
-        
+
         for layer in self.classifier:
             if isinstance(layer, nn.Linear):
                 layer.weight.data.normal_(mean=0.0, std=0.02)
@@ -132,9 +132,9 @@ class EmoModel(nn.Module):
     def forward(self, input_, *args):
         X, attention_mask = input_
         hidden_states = self.base_model(X, attention_mask=attention_mask)
-        
+
         # maybe do some pooling / RNNs... go crazy here!
-        
+
         # use the <s> representation
         return self.classifier(hidden_states[0][:, 0, :])
 
@@ -179,7 +179,7 @@ class TokenizersCollateFn:
         sequences_padded = torch.tensor([enc.ids for enc in encoded])
         attention_masks_padded = torch.tensor([enc.attention_mask for enc in encoded])
         labels = torch.tensor([x[1] for x in batch])
-        
+
         return (sequences_padded, attention_masks_padded), labels
 
 """## Getting the Data and Preview it
@@ -209,46 +209,36 @@ label2int = {
 
 #!wget https://www.dropbox.com/s/607ptdakxuh5i4s/merged_training.pkl
 
-import pickle
-
-## helper function
-def load_from_pickle(directory):
-    return pickle.load(open(directory,"rb"))
-
-data = load_from_pickle(directory="merged_training.pkl")
-
 ## using a sample
-emotions = [ "sadness", "joy", "love", "anger", "fear", "surprise"]
-data= data[data["emotions"].isin(emotions)]
+df = pd.read_csv('story_emotion_data/cleanEmotion.csv')
 
+
+emotions = pd.unique(df.iloc[:,2:10].values.flatten())
+
+emotions = emotions[emotions != '']
+emotions = emotions[emotions != None]
 
 data = data.sample(n=20000);
 
 data.emotions.value_counts().plot.bar()
 
-data.count()
-
 """Data has been preprocessed already, using technique from this paper: https://www.aclweb.org/anthology/D18-1404/"""
 
-data.head()
 
 ## reset index
 data.reset_index(drop=True, inplace=True)
-
-## check unique emotions in the dataset
-data.emotions.unique()
 
 """## Split the data and store into individual text files"""
 
 ## uncomment the code below to generate the text files for your train, val, and test datasets.
 
-'''
+
 from sklearn.model_selection import train_test_split
 import numpy as np
 
 # Creating training and validation sets using an 80-20 split
-input_train, input_val, target_train, target_val = train_test_split(data.text.to_numpy(), 
-                                                                    data.emotions.to_numpy(), 
+input_train, input_val, target_train, target_val = train_test_split(data.text.to_numpy(),
+                                                                    data.emotions.to_numpy(),
                                                                     test_size=0.2)
 
 # Split the validataion further to obtain a holdout dataset (for testing) -- split 50:50
@@ -264,7 +254,7 @@ final_dataset = {"train": train_dataset, "val": val_dataset , "test": test_datas
 train_dataset.to_csv(train_path, sep=";",header=False, index=False)
 val_dataset.to_csv(test_path, sep=";",header=False, index=False)
 test_dataset.to_csv(val_path, sep=";",header=False, index=False)
-'''
+
 
 """## Create the Dataset object
 
@@ -320,17 +310,17 @@ class TrainingModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         return self.step(batch, "train")
-    
+
     def validation_step(self, batch, batch_idx):
         return self.step(batch, "val")
 
     def validation_end(self, outputs: List[dict]):
         loss = torch.stack([x["val_loss"] for x in outputs]).mean()
         return {"val_loss": loss}
-        
+
     def test_step(self, batch, batch_idx):
         return self.step(batch, "test")
-    
+
     def train_dataloader(self):
         return self.create_data_loader(self.hparams.train_path, shuffle=True)
 
@@ -339,7 +329,7 @@ class TrainingModule(pl.LightningModule):
 
     def test_dataloader(self):
         return self.create_data_loader(self.hparams.test_path)
-                
+
     def create_data_loader(self, ds_path: str, shuffle=False):
         return DataLoader(
                     EmoDataset(ds_path),
@@ -347,7 +337,7 @@ class TrainingModule(pl.LightningModule):
                     shuffle=shuffle,
                     collate_fn=TokenizersCollateFn()
         )
-        
+
     @lru_cache()
     def total_steps(self):
         return len(self.train_dataloader()) // self.hparams.accumulate_grad_batches * self.hparams.epochs
