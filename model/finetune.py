@@ -1,7 +1,14 @@
 import numpy as np
+import tqdm
 import pandas as pd
 import torch
 import torch.nn as nn
+
+torch.cuda.empty_cache()
+
+import gc
+gc.collect()
+
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import transformers
@@ -12,7 +19,9 @@ from transformers import AutoModel, BertTokenizerFast
 device = torch.device("cuda")
 
 df = pd.read_csv("projdata.txt", on_bad_lines='skip', quotechar='"', engine='python')
-df.head()
+print(df.head())
+
+print(torch.cuda.memory_summary())
 
 #[id, text, label]
 # split train dataset into train, validation and test sets
@@ -26,7 +35,6 @@ val_text, test_text, val_labels, test_labels = train_test_split(temp_text, temp_
                                                                 random_state=2018,
                                                                 test_size=0.5,
                                                                 stratify=temp_labels)
-
 # import BERT-base pretrained model
 bert = AutoModel.from_pretrained('bert-base-uncased')
 #bert = AutoModel.from_pretrained('checkpoints/...')
@@ -38,7 +46,7 @@ tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
 seq_len = [len(i.split()) for i in train_text]
 
 #pd.Series(seq_len).hist(bins = 30)
-
+'''
 # tokenize and encode sequences in the training set
 tokens_train = tokenizer.batch_encode_plus(
     train_text.tolist(),
@@ -54,7 +62,7 @@ tokens_val = tokenizer.batch_encode_plus(
     pad_to_max_length=True,
     truncation=True
 )
-
+'''
 
 # tokenize and encode sequences in the test set
 tokens_test = tokenizer.batch_encode_plus(
@@ -63,7 +71,7 @@ tokens_test = tokenizer.batch_encode_plus(
     pad_to_max_length=True,
     truncation=True
 )
-
+'''
 train_seq = torch.tensor(tokens_train['input_ids'])
 train_mask = torch.tensor(tokens_train['attention_mask'])
 train_y = torch.tensor(train_labels.tolist())
@@ -71,7 +79,7 @@ train_y = torch.tensor(train_labels.tolist())
 val_seq = torch.tensor(tokens_val['input_ids'])
 val_mask = torch.tensor(tokens_val['attention_mask'])
 val_y = torch.tensor(val_labels.tolist())
-
+'''
 test_seq = torch.tensor(tokens_test['input_ids'])
 test_mask = torch.tensor(tokens_test['attention_mask'])
 test_y = torch.tensor(test_labels.tolist())
@@ -80,7 +88,7 @@ from torch.utils.data import TensorDataset, DataLoader, RandomSampler, Sequentia
 
 #define a batch size
 batch_size = 32
-
+'''
 # wrap tensors
 train_data = TensorDataset(train_seq, train_mask, train_y)
 
@@ -98,7 +106,7 @@ val_sampler = SequentialSampler(val_data)
 
 # dataLoader for validation set
 val_dataloader = DataLoader(val_data, sampler = val_sampler, batch_size=batch_size)
-
+'''
 class BERT_Arch(nn.Module):
 
     def __init__(self, bert):
@@ -122,7 +130,7 @@ class BERT_Arch(nn.Module):
     def forward(self, sent_id, mask):
 
       #pass the inputs to the model
-      _, cls_hs = self.bert(sent_id, attention_mask=mask)
+      _, cls_hs = self.bert(sent_id, attention_mask=mask,return_dict=False)
 
       x = self.fc1(cls_hs)
 
@@ -143,6 +151,7 @@ model = BERT_Arch(bert)
 # push the model to GPU
 model = model.to(device)
 
+'''
 # optimizer from hugging face transformers
 from transformers import AdamW
 
@@ -164,7 +173,7 @@ weights= torch.tensor(class_weights,dtype=torch.float)
 weights = weights.to(device)
 
 # define the loss function
-cross_entropy  = nn.NLLLoss(weight=weights)
+cross_entropy  = nn.NLLLoss()
 
 # number of training epochs
 epochs = 10
@@ -247,9 +256,6 @@ def evaluate():
     # Progress update every 50 batches.
     if step % 50 == 0 and not step == 0:
 
-      # Calculate elapsed time in minutes.
-      elapsed = format_time(time.time() - t0)
-
       # Report progress.
       print('  Batch {:>5,}  of  {:>5,}.'.format(step, len(val_dataloader)))
 
@@ -310,17 +316,27 @@ for epoch in range(epochs):
 
     print(f'\nTraining Loss: {train_loss:.3f}')
     print(f'Validation Loss: {valid_loss:.3f}')
+'''
+print(torch.cuda.memory_summary())
 
-#load weights of best model
-path = 'saved_weights.pt'
-model.load_state_dict(torch.load(path))
+def predict():
+    #load weights of best model                                                                                         
+    path = 'saved_weights.pt'
+    model.load_state_dict(torch.load(path))
 
-# get predictions for test data
-with torch.no_grad():
-  preds = model(test_seq.to(device), test_mask.to(device))
-  preds = preds.detach().cpu().numpy()
+    print("model loaded")
 
-# get predictions for test data
-with torch.no_grad():
-  preds = model(test_seq.to(device), test_mask.to(device))
-  preds = preds.detach().cpu().numpy()
+    LEN = 500
+    iter = 0
+    predictions = []
+    # get predictions for test data
+    with torch.no_grad():
+        for iter in range(len(test_seq)//LEN):
+            preds = model(test_seq[iter*LEN:(iter+1)*LEN].to(device), test_mask[iter*LEN:(iter+1)*LEN].to(device))
+            preds = preds.detach().cpu().numpy()
+            
+            torch.cuda.clear_cache()
+
+            predictions.append(np.argmax(preds, axis = 1))
+            print(classification_report(test_y[iter*LEN:(iter+1)*LEN], preds))
+predict()
