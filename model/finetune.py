@@ -7,7 +7,6 @@ import torch.nn as nn
 torch.cuda.empty_cache()
 
 import gc
-gc.collect()
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
@@ -46,7 +45,7 @@ tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
 seq_len = [len(i.split()) for i in train_text]
 
 #pd.Series(seq_len).hist(bins = 30)
-'''
+
 # tokenize and encode sequences in the training set
 tokens_train = tokenizer.batch_encode_plus(
     train_text.tolist(),
@@ -62,7 +61,6 @@ tokens_val = tokenizer.batch_encode_plus(
     pad_to_max_length=True,
     truncation=True
 )
-'''
 
 # tokenize and encode sequences in the test set
 tokens_test = tokenizer.batch_encode_plus(
@@ -71,7 +69,6 @@ tokens_test = tokenizer.batch_encode_plus(
     pad_to_max_length=True,
     truncation=True
 )
-'''
 train_seq = torch.tensor(tokens_train['input_ids'])
 train_mask = torch.tensor(tokens_train['attention_mask'])
 train_y = torch.tensor(train_labels.tolist())
@@ -79,7 +76,7 @@ train_y = torch.tensor(train_labels.tolist())
 val_seq = torch.tensor(tokens_val['input_ids'])
 val_mask = torch.tensor(tokens_val['attention_mask'])
 val_y = torch.tensor(val_labels.tolist())
-'''
+
 test_seq = torch.tensor(tokens_test['input_ids'])
 test_mask = torch.tensor(tokens_test['attention_mask'])
 test_y = torch.tensor(test_labels.tolist())
@@ -88,7 +85,7 @@ from torch.utils.data import TensorDataset, DataLoader, RandomSampler, Sequentia
 
 #define a batch size
 batch_size = 32
-'''
+
 # wrap tensors
 train_data = TensorDataset(train_seq, train_mask, train_y)
 
@@ -106,7 +103,7 @@ val_sampler = SequentialSampler(val_data)
 
 # dataLoader for validation set
 val_dataloader = DataLoader(val_data, sampler = val_sampler, batch_size=batch_size)
-'''
+
 class BERT_Arch(nn.Module):
 
     def __init__(self, bert):
@@ -150,8 +147,8 @@ model = BERT_Arch(bert)
 
 # push the model to GPU
 model = model.to(device)
+gc.collect()
 
-'''
 # optimizer from hugging face transformers
 from transformers import AdamW
 
@@ -316,7 +313,7 @@ for epoch in range(epochs):
 
     print(f'\nTraining Loss: {train_loss:.3f}')
     print(f'Validation Loss: {valid_loss:.3f}')
-'''
+
 print(torch.cuda.memory_summary())
 
 def predict():
