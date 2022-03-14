@@ -18,23 +18,23 @@ from transformers import AutoModel, BertTokenizerFast
 # specify GPU
 device = torch.device("cuda")
 
-df = pd.read_csv("projdata.txt", on_bad_lines='skip', quotechar='"', engine='python')
-print(df.head())
+train = pd.read_csv("train_data.txt", on_bad_lines='skip', quotechar='"', engine='python')
+test = pd.read_csv("test_data.txt", on_bad_lines='skip', quotechar='"', engine='python')
+train = pd.read_csv("val_data.txt", on_bad_lines='skip', quotechar='"', engine='python')
 
-print(torch.cuda.memory_summary())
+#print(torch.cuda.memory_summary())
 
 #[id, text, label]
 # split train dataset into train, validation and test sets
-train_text, temp_text, train_labels, temp_labels = train_test_split(df['text'], df['label'],
-                                                                    random_state=2018,
-                                                                    test_size=0.3,
-                                                                    stratify=df['label'])
+train_text = train['text']
+train_labels = train['label']
 
+test_text = test['text']
+test_labels = test['label']
 
-val_text, test_text, val_labels, test_labels = train_test_split(temp_text, temp_labels,
-                                                                random_state=2018,
-                                                                test_size=0.5,
-                                                                stratify=temp_labels)
+val_text = val['text']
+val_labels = val['label']
+
 # import BERT-base pretrained model
 bert = AutoModel.from_pretrained('bert-base-uncased')
 #bert = AutoModel.from_pretrained('checkpoints/...')
@@ -320,7 +320,7 @@ for epoch in range(epochs):
 print(torch.cuda.memory_summary())
 
 def predict():
-    #load weights of best model                                                                                         
+    #load weights of best model
     path = 'saved_weights.pt'
     model.load_state_dict(torch.load(path))
 
@@ -334,7 +334,7 @@ def predict():
         for iter in range(len(test_seq)//LEN):
             preds = model(test_seq[iter*LEN:(iter+1)*LEN].to(device), test_mask[iter*LEN:(iter+1)*LEN].to(device))
             preds = preds.detach().cpu().numpy()
-            
+
             torch.cuda.clear_cache()
 
             predictions.append(np.argmax(preds, axis = 1))
