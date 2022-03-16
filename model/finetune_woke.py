@@ -17,12 +17,22 @@ from transformers import AutoModel, BertTokenizerFast
 # specify GPU
 device = torch.device("cuda")
 
-train = pd.read_csv("train_data.txt", on_bad_lines='skip', quotechar='"', engine='python')
-test = pd.read_csv("test_data.txt", on_bad_lines='skip', quotechar='"', engine='python')
-val = pd.read_csv("val_data.txt", on_bad_lines='skip', quotechar='"', engine='python')
+df = pd.read_csv("final_data.csv", on_bad_lines='skip', quotechar='"', engine='python')
+
+df['text'] = df['sentence1']+' '+df['sentence2']+' '+df['sentence3']+' '+df['sentence4']+' '+df['sentence5']
+df['comet'] = pd.DataFrame(np.c_[np.vstack(df['causes1']),np.vstack(df['causes2']),np.vstack(df['causes3']),np.vstack(df['causes4']),np.vstack(df['causes5']),np.vstack(df['hasprereq1']),np.vstack(df['hasprereq2']),np.vstack(df['hasprereq3']),np.vstack(df['hasprereq4']),np.vstack(df['hasprereq5'])])
+df['emotions'] = pd.DataFrame(np.c_[np.vstack(df['emotions1']),np.vstack(df['emotions2']),np.vstack(df['emotions3']),np.vstack(df['emotions4']),np.vstack(df['emotions5'])])
 
 #print(torch.cuda.memory_summary())
 
+X = df.loc[:, df.columns == 'text','comet','emotions']
+y = df.loc[:, df.columns == 'label']
+
+train, test, train_labels, test_labels = train_test_split(X, y, test_size=0.2, random_state=1)
+
+train, val, train_labels, val_labels = train_test_split(X_train, y_train, test_size=0.25, random_state=1) # 0.25 x 0.8 = 0.2
+
+print(train.head())
 #[id, text, label]
 # split train dataset into train, validation and test sets
 train_text = train['text']
@@ -40,6 +50,7 @@ val_comet = val['comet']
 val_emo = val['emotions']
 val_labels = val['label']
 
+'''
 # import BERT-base pretrained model
 bert = AutoModel.from_pretrained('bert-base-uncased')
 #bert = AutoModel.from_pretrained('checkpoints/...')
@@ -265,7 +276,9 @@ def train():
 
   #returns the loss and predictions
   return avg_loss, total_preds
+'''
 
+'''
 # function for evaluating the model
 def evaluate():
 
@@ -369,3 +382,4 @@ def predict():
             predictions.append(np.argmax(preds, axis = 1))
             print(classification_report(test_y[iter*LEN:(iter+1)*LEN], preds))
 predict()
+'''
