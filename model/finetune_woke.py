@@ -1,8 +1,10 @@
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import pandas as pd
+import re
 import torch
 import torch.nn as nn
+from ast import literal_eval
 
 torch.cuda.empty_cache()
 
@@ -17,40 +19,99 @@ from transformers import AutoModel, BertTokenizerFast
 # specify GPU
 device = torch.device("cuda")
 
+# process the data
 df = pd.read_csv("final_data.csv", on_bad_lines='skip', quotechar='"', engine='python')
 
+#for i in range(10):
+#    print(len(df['causes1'].iloc[i]))
+    
 df['text'] = df['sentence1']+' '+df['sentence2']+' '+df['sentence3']+' '+df['sentence4']+' '+df['sentence5']
-df['comet'] = pd.DataFrame(np.c_[np.vstack(df['causes1']),np.vstack(df['causes2']),np.vstack(df['causes3']),np.vstack(df['causes4']),np.vstack(df['causes5']),np.vstack(df['hasprereq1']),np.vstack(df['hasprereq2']),np.vstack(df['hasprereq3']),np.vstack(df['hasprereq4']),np.vstack(df['hasprereq5'])])
-df['emotions'] = pd.DataFrame(np.c_[np.vstack(df['emotions1']),np.vstack(df['emotions2']),np.vstack(df['emotions3']),np.vstack(df['emotions4']),np.vstack(df['emotions5'])])
+print(df['text'].head())
 
+#c = np.c_[df['causes1'].to_numpy()),np.vstack(df['causes2']),np.vstack(df['causes3']),np.vstack(df['causes4']),np.vstack(df['causes5']),np.vstack(df['hasprereq1']),np.vstack(df['hasprereq2']),np.vstack(df['hasprereq3']),np.vstack(df['hasprereq4']),np.vstack(df['hasprereq5'])]
+
+'''
+c = [x for x in df['causes1'].apply(lambda x: [float(a) for a in x[1:-1].split()] )]
+e = [[]*len(df.index)]
+for i in range(5):
+    ci = 'causes' + str(i+1)
+    hpi = 'hasprereq' + str(i+1)
+    ei = 'emotions' + str(i+1)
+    print(df[ci].head())
+    
+    c = [y.extend(z) for y in c for z in df[ci].apply(lambda x: [float(a) for a in x.split()[1:-1]]) ]  
+    print(len(c))
+    print(len(c[0]))
+    c = [y.extend(z) for y in c for z in df[hpi].apply(lambda x: [float(a) for a in x.split()[1:-1]]) ]
+    e = [y.extend(z) for y in e for z in df[ei].apply(lambda x: [float(a) for a in x.split(', ')[1:-1]]) ]
+    #c.extend(df[hpi].apply(lambda x: [float(a) for a in x[1:-1].split()]))
+    #e.extend(df[ei].apply(lambda x: [float(a) for a in x[1:-1].split(', ')]))
+
+c = np.array(c)
+e = np.array(e)
+#c = np.c_[df['causes1'].to_numpy(),df['causes2'].to_numpy(),df['causes3'].to_numpy(),df['causes4'].to_numpy(),df['causes5'].to_numpy(),df['hasprereq1'].to_numpy(),df['hasprereq2'].to_numpy(),df['hasprereq3'].to_numpy(),df['hasprereq4'].to_numpy(),df['hasprereq5'].to_numpy()]
+
+print("last len(c)",len(c))
+print("last len(c[0])",len(c[0]))
+#print(c[0:10])
+
+df['comet'] = pd.Series([item for sublist in c for item in sublist])
+    
+#e = np.c_[np.vstack(df['emotions1']),np.vstack(df['emotions2']),np.vstack(df['emotions3']),np.vstack(df['emotions4']),np.vstack(df['emotions5'])]
+#e = np.c_[df['emotions1'].to_numpy(),df['emotions2'].to_numpy(),df['emotions3'].to_numpy(),df['emotions4'].to_numpy(),df['emotions5'].to_numpy()]
+
+df['emotions'] = pd.Series([item for sublist in e for item in sublist])
+
+#df['comet'] = df['comet'].apply(lambda x: [float(a) for a in x[1:-1].split()])
+#df['emotions'] = df['emotions'].apply(lambda x: [float(a) for a in x[1:-1].split(', ')])
 #print(torch.cuda.memory_summary())
+'''
 
-X = df.loc[:, df.columns == 'text','comet','emotions']
+for i in range(5):
+    ci = 'causes'+str(i+1)
+    hpi = 'hasprereq'+str(i+1)
+    ei = 'emotions'+str(i+1)
+    df[ci]= df[ci].str.replace('\[|\]', '', regex=True)
+    #print(df[ci].head())
+    df[hpi]= df[hpi].str.replace('\[|\]', '', regex=True)
+    df[ei]= df[ei].str.replace('\[|\]', '', regex=True)
+
+c = df['causes1']+' '+df['causes2']+' '+df['causes3']+' '+df['causes4']+' '+df['causes5']+' '+df['hasprereq1']+' '+df['hasprereq2']+' '+df['hasprereq3']+' '+df['hasprereq4']+' '+df['hasprereq5']
+#print(len(c))
+#print(len(c[0]))
+e = df['emotions1']+' '+df['emotions2']+' '+df['emotions3']+' '+df['emotions4']+' '+df['emotions5']
+
+
+df['comet'] = c.apply(lambda x: [float(a) for a in x.split()])
+df['emotions'] = e.apply(lambda x: [float(a) for a in re.split(', | ',x)])
+
+X = df.loc[:, ['text','comet','emotions']]
 y = df.loc[:, df.columns == 'label']
+
+#y = y.replace(['0','1'],[0,1])
 
 train, test, train_labels, test_labels = train_test_split(X, y, test_size=0.2, random_state=1)
 
-train, val, train_labels, val_labels = train_test_split(X_train, y_train, test_size=0.25, random_state=1) # 0.25 x 0.8 = 0.2
+train, val, train_labels, val_labels = train_test_split(train, train_labels, test_size=0.25, random_state=1) # 0.25 x 0.8 = 0.2
 
-print(train.head())
+
+#print(train.head())
+#print(train.iloc[5])
 #[id, text, label]
+
 # split train dataset into train, validation and test sets
 train_text = train['text']
 train_comet = train['comet']
 train_emo = train['emotions']
-train_labels = train['label']
 
 test_text = test['text']
 test_comet = test['comet']
 test_emo = test['emotions']
-test_labels = test['label']
 
 val_text = val['text']
 val_comet = val['comet']
 val_emo = val['emotions']
-val_labels = val['label']
 
-'''
 # import BERT-base pretrained model
 bert = AutoModel.from_pretrained('bert-base-uncased')
 #bert = AutoModel.from_pretrained('checkpoints/...')
@@ -88,19 +149,19 @@ tokens_test = tokenizer.batch_encode_plus(
 )
 train_seq = torch.tensor(tokens_train['input_ids'])
 train_mask = torch.tensor(tokens_train['attention_mask'])
-train_y = torch.tensor(train_labels.tolist())
+train_y = torch.flatten(torch.tensor(train_labels.values.tolist()))
 train_comet = torch.tensor(train_comet.tolist())
 train_emo = torch.tensor(train_emo.tolist())
 
 val_seq = torch.tensor(tokens_val['input_ids'])
 val_mask = torch.tensor(tokens_val['attention_mask'])
-val_y = torch.tensor(val_labels.tolist())
+val_y = torch.flatten(torch.tensor(val_labels.values.tolist()))
 val_comet = torch.tensor(val_comet.tolist())
 val_emo = torch.tensor(val_emo.tolist())
 
 test_seq = torch.tensor(tokens_test['input_ids'])
 test_mask = torch.tensor(tokens_test['attention_mask'])
-test_y = torch.tensor(test_labels.tolist())
+test_y = torch.flatten(torch.tensor(test_labels.values.tolist()))
 test_comet = torch.tensor(test_comet.tolist())
 test_emo = torch.tensor(test_emo.tolist())
 
@@ -199,18 +260,18 @@ from transformers import AdamW
 optimizer = AdamW(model.parameters(),
                   lr = 1e-5)          # learning rate
 
-from sklearn.utils.class_weight import compute_class_weight
+#from sklearn.utils.class_weight import compute_class_weight
 
 #compute the class weights
-class_weights = compute_class_weight('balanced', np.unique(train_labels), train_labels)
+#class_weights = compute_class_weight('balanced', np.unique(train_labels), train_labels)
 
-print("Class Weights:",class_weights)
+#print("Class Weights:",class_weights)
 
 # converting list of class weights to a tensor
-weights= torch.tensor(class_weights,dtype=torch.float)
+#weights= torch.tensor(class_weights,dtype=torch.float)
 
 # push to GPU
-weights = weights.to(device)
+#weights = weights.to(device)
 
 # define the loss function
 cross_entropy  = nn.NLLLoss()
@@ -229,7 +290,7 @@ def train():
   total_preds=[]
 
   # iterate over batches
-  for step,batch in enumerate(train_dataloader):
+  for step,batch in tqdm(enumerate(train_dataloader)):
 
     # progress update after every 50 batches.
     if step % 50 == 0 and not step == 0:
@@ -244,8 +305,14 @@ def train():
     model.zero_grad()
 
     # get model predictions for the current batch
-    preds = model(sent_id, mask)
+    preds = model(sent_id, comets, emos, mask)
 
+    #print("preds shape", preds.shape)
+    #print("labels shape", labels.shape)
+    #preds = torch.argmax(preds, dim=1)
+    #preds = preds.view(batch_size, 1)
+    
+    #print("preds argmax shape", preds.shape)
     # compute the loss between actual and predicted values
     loss = cross_entropy(preds, labels)
 
@@ -276,9 +343,8 @@ def train():
 
   #returns the loss and predictions
   return avg_loss, total_preds
-'''
 
-'''
+
 # function for evaluating the model
 def evaluate():
 
@@ -374,12 +440,12 @@ def predict():
     # get predictions for test data
     with torch.no_grad():
         for iter in range(len(test_seq)//LEN):
-            preds = model(test_seq[iter*LEN:(iter+1)*LEN].to(device), test_mask[iter*LEN:(iter+1)*LEN].to(device))
+            preds = model(test_seq[iter*LEN:(iter+1)*LEN].to(device), test_comet[iter*LEN:(iter+1)*LEN].to(device), test_emo[iter*LEN:(iter+1)*LEN].to(device),test_mask[iter*LEN:(iter+1)*LEN].to(device))
             preds = preds.detach().cpu().numpy()
 
-            torch.cuda.clear_cache()
+            torch.cuda.empty_cache()
 
             predictions.append(np.argmax(preds, axis = 1))
             print(classification_report(test_y[iter*LEN:(iter+1)*LEN], preds))
 predict()
-'''
+
